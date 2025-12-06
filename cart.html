@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Go Ghee — Cart & Checkout</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:0;background:#fff8f0;padding:14px;}
+  .card{background:#fff;padding:12px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);margin-bottom:12px;}
+  input,textarea{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid #ccc;font-size:14px;}
+  .btn{background:#f5c23b;border:0;padding:10px;border-radius:8px;margin-top:10px;font-weight:700;cursor:pointer;}
+  .wa-support{
+    position:fixed;right:14px;bottom:14px;
+    background:#25D366;color:#fff;border-radius:999px;
+    padding:10px 14px;font-weight:700;
+    box-shadow:0 8px 30px rgba(37,211,102,0.3);
+    text-decoration:none;font-size:14px;
+  }
+</style>
+</head>
+<body>
+
+<h2>Your Cart</h2>
+<div id="items" class="card"></div>
+
+<div class="card">
+  <h3>Customer Details (India only)</h3>
+  <input id="cust_name" placeholder="Name">
+  <input id="cust_phone" placeholder="Mobile (10 digits)">
+  <input id="cust_area" placeholder="Area / Mohalla">
+  <input id="cust_village" placeholder="Gaon / City">
+  <input id="cust_district" placeholder="Jila / District">
+  <input id="cust_state" placeholder="Rajya / State">
+  <input id="cust_pin" placeholder="PIN Code (6 digits)">
+  <textarea id="cust_addr" placeholder="Full Address"></textarea>
+  <button class="btn" onclick="placeOrder()">Confirm Order (COD & WhatsApp)</button>
+</div>
+
+<a class="wa-support" href="https://wa.me/message/YGVHACAEVCTAN1" target="_blank" rel="noopener">
+  WhatsApp Support
+</a>
+
+<script>
+function getCart(){ try{return JSON.parse(localStorage.getItem("goGheeCart")||"[]");}catch(e){return [];} }
+
+function renderCart(){
+  const box = document.getElementById("items");
+  const cart = getCart();
+  if(!cart.length){
+    box.innerHTML = "<p>No items in cart.</p>";
+    return;
+  }
+  let total = 0;
+  let html = "";
+  cart.forEach(i=>{
+    const line = i.price * i.qty;
+    total += line;
+    html += `<div>${i.title} x ${i.qty} = ₹${line}</div>`;
+  });
+  let ship = (total>0 && total<599) ? 40 : 0;
+  let grand = total + ship;
+  html += `<hr><div>Subtotal: ₹${total}</div>`;
+  html += `<div>Shipping: ₹${ship}</div>`;
+  html += `<div><strong>Total: ₹${grand}</strong></div>`;
+  box.innerHTML = html;
+}
+
+function placeOrder(){
+  const name = cust_name.value.trim();
+  const phone = cust_phone.value.trim();
+  const area = cust_area.value.trim();
+  const village = cust_village.value.trim();
+  const district = cust_district.value.trim();
+  const state = cust_state.value.trim();
+  const pin = cust_pin.value.trim();
+  const addr = cust_addr.value.trim();
+
+  if(!name || !phone || !area || !village || !district || !state || !pin || !addr){
+    alert("Sabhi details bharein.");
+    return;
+  }
+  if(!/^[6-9]\d{9}$/.test(phone)){
+    alert("Sahi 10 digit Indian mobile number dalo.");
+    return;
+  }
+  if(!/^\d{6}$/.test(pin)){
+    alert("Sahi 6 digit PIN code dalo.");
+    return;
+  }
+
+  const cart = getCart();
+  if(!cart.length){ alert("Cart khaali hai."); return; }
+
+  const total = cart.reduce((s,i)=>s + i.price*i.qty, 0);
+  const ship = (total>0 && total<599)?40:0;
+  const grand = total + ship;
+  const orderId = "GG" + Date.now().toString().slice(-6);
+  const itemsText = cart.map(i=>`${i.title} x${i.qty} (₹${i.price*i.qty})`).join("\n");
+
+  const msg =
+`📦 *New COD Order*
+Order ID: ${orderId}
+
+Name: ${name}
+Mobile: ${phone}
+Area: ${area}
+Gaon/City: ${village}
+District: ${district}
+State: ${state}
+PIN: ${pin}
+Address: ${addr}
+
+Items:
+${itemsText}
+
+Total (incl. shipping): ₹${grand}`;
+
+  // save order for admin panel
+  let orders;
+  try{ orders = JSON.parse(localStorage.getItem("goGheeOrders")||"[]"); }catch(e){ orders=[]; }
+  orders.push({
+    orderId,name,phone,area,village,district,state,pin,address:addr,
+    items:cart,total:grand,date:new Date().toISOString()
+  });
+  localStorage.setItem("goGheeOrders", JSON.stringify(orders));
+
+  // clear cart
+  localStorage.removeItem("goGheeCart");
+
+  // whatsapp
+  const url = "https://wa.me/message/YGVHACAEVCTAN1?text=" + encodeURIComponent(msg);
+  window.open(url, "_blank");
+
+  alert("Order placed! Order ID: " + orderId);
+  window.location.href = "index.html";
+}
+
+renderCart();
+</script>
+</body>
+</html>
