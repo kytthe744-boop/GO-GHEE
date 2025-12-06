@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Go Ghee — Cart</title>
+<style>
+  body{font-family:Arial;margin:0;background:#fff;padding:14px}
+  .card{background:#fff;padding:12px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);margin-bottom:12px}
+  input,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;margin-top:6px}
+  .btn{background:#f5c23b;border:0;padding:10px;border-radius:8px;margin-top:10px;font-weight:700}
+</style>
+</head>
+<body>
+
+<h2>Your Cart</h2>
+<div id="items"></div>
+
+<hr>
+
+<h3>Customer Details</h3>
+<input id="name" placeholder="Full Name">
+<input id="phone" placeholder="Indian Mobile (10 digits)">
+<input id="village" placeholder="Gaon / City">
+<input id="post" placeholder="Post / Save">
+<input id="district" placeholder="District">
+<input id="state" placeholder="State">
+<input id="pincode" placeholder="PIN Code (6 digits)">
+<textarea id="address" placeholder="Full Address"></textarea>
+
+<button class="btn" onclick="order()">Confirm Order (COD)</button>
+
+<script>
+function cart(){ return JSON.parse(localStorage.getItem("goGheeCart")||"[]"); }
+function show(){
+  let c = cart(), html="";
+  let total=0;
+
+  c.forEach(i=>{
+    total += i.price * i.qty;
+    html += `<div class="card">${i.title} x ${i.qty} = ₹${i.price*i.qty}</div>`;
+  });
+
+  if(!c.length) html="<p>No items</p>";
+  items.innerHTML = html + `<h3>Total: ₹${total}</h3>`;
+}
+
+function order(){
+  let name=name.value.trim();
+  let ph=phone.value.trim();
+  let v=village.value.trim();
+  let po=post.value.trim();
+  let d=district.value.trim();
+  let s=state.value.trim();
+  let pc=pincode.value.trim();
+  let ad=address.value.trim();
+
+  if(!name||!ph||!v||!po||!d||!s||!pc||!ad){ alert("Fill all fields."); return; }
+  if(!/^[6-9]\d{9}$/.test(ph)){ alert("Invalid Indian mobile number."); return; }
+  if(!/^\d{6}$/.test(pc)){ alert("Invalid PIN."); return; }
+
+  let c = cart();
+  if(!c.length){ alert("Cart empty."); return; }
+
+  let total = c.reduce((a,b)=>a+b.price*b.qty,0);
+  let orderId = "GG"+Date.now();
+
+  let msg = 
+`📦 *New COD Order* 
+ID: ${orderId}
+
+Name: ${name}
+Phone: ${ph}
+Address: ${v}, ${po}, ${d}, ${s} - ${pc}
+Full: ${ad}
+
+Total: ₹${total}`;
+
+  // save order
+  let all = JSON.parse(localStorage
