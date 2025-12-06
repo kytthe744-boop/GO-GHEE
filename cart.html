@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Go Ghee - Cart & Checkout</title>
+<style>
+  body{font-family:Inter,Arial;margin:0;background:#fff8f0;color:#222;padding:12px}
+  .card{background:#fff;padding:12px;border-radius:10px;margin-bottom:12px;box-shadow:0 8px 20px rgba(0,0,0,0.05)}
+  .btn{background:#f5c23b;border:none;padding:10px;border-radius:8px;font-weight:700;cursor:pointer}
+  input,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #ddd;margin-top:8px}
+  .row{display:flex;gap:8px}
+  @media(max-width:480px){ .row{flex-direction:column} }
+</style>
+</head>
+<body>
+
+<header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+  <div style="font-weight:700">Go Ghee</div>
+  <a href="index.html">Back to Products</a>
+</header>
+
+<div class="card">
+  <h3>Your Cart</h3>
+  <div id="items"></div>
+  <div style="margin-top:8px">Shipping: <span id="ship">₹0</span></div>
+  <div style="font-weight:700;margin-top:8px">Total: ₹<span id="total">0</span></div>
+</div>
+
+<div class="card">
+  <h3>Customer Details (India only)</h3>
+  <div class="row">
+    <input id="name" placeholder="Full Name">
+    <input id="phone" placeholder="Mobile (10 digits)">
+  </div>
+  <input id="email" placeholder="Email (optional)">
+  <div class="row">
+    <input id="village" placeholder="Gaon / City">
+    <input id="post" placeholder="Post / Save">
+  </div>
+  <div class="row">
+    <input id="district" placeholder="Jila / District">
+    <input id="state" placeholder="Rajya / State">
+  </div>
+  <div class="row">
+    <input id="pincode" placeholder="PIN Code (6 digits)">
+    <input id="altphone" placeholder="Alt phone (optional)">
+  </div>
+  <textarea id="address" rows="2" placeholder="Full Address"></textarea>
+
+  <div style="display:flex;gap:8px;margin-top:8px">
+    <button class="btn" id="confirm">Confirm Order (COD & WhatsApp)</button>
+    <button class="btn" id="clear" style="background:#ddd;color:#000">Clear Cart</button>
+  </div>
+  <div id="msg" style="margin-top:8px;color:green;display:none"></div>
+</div>
+
+<script>
+const WA_LINK = "https://wa.me/message/YGVHACAEVCTAN1";
+function getCart(){ return JSON.parse(localStorage.getItem('goGheeCart')||'[]'); }
+function saveCart(c){ localStorage.setItem('goGheeCart', JSON.stringify(c)); render(); }
+
+function render(){
+  const items = getCart();
+  const el = document.getElementById('items'); el.innerHTML = '';
+  let total = 0;
+  if(items.length===0){ el.innerHTML = '<div style="color:#666">Cart is empty</div>'; document.getElementById('total').innerText=0; return; }
+  items.forEach(it=>{
+    el.innerHTML += `<div style="padding:6px 0;border-bottom:1px dashed #eee"><strong>${it.title}</strong> — ₹${it.price} x ${it.qty} = ₹${it.price*it.qty}</div>`;
+    total += it.price*it.qty;
+  });
+  const ship = (total>0 && total<599)?40:0;
+  document.getElementById('ship').innerText = '₹'+ship;
+  document.getElementById('total').innerText = total + ship;
+}
+
+function clearCart(){ localStorage.removeItem('goGheeCart'); render(); }
+
+document.getElementById('clear').addEventListener('click', function(){ if(confirm('Clear cart?')) clearCart(); });
+
+document.getElementById('confirm').addEventListener('click', function(){
+  const name = document.getElementById('name').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const village = document.getElementById('village').value.trim();
+  const post = document.getElementById('post').value.trim();
+  const district = document.getElementById('district').value.trim();
+  const state = document.getElementById('state').value.trim();
+  const pincode = document.getElementById('pincode').value.trim();
+  const address = document.getElementById('address').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const alt = document.getElementById('altphone').value.trim();
+
+  // Validation (India only)
+  if(!name || !phone || !village || !post || !district || !state || !pincode || !address){
+    alert('Kripya sabhi required fields bharain. (Please fill all required details)');
+    return;
+  }
+  if(!/^[6-9]\\d{9}$/.test(phone)){ alert('Valid Indian mobile number required (10 digits, starts 6-9).'); return; }
+  if(!/^[1-9][0-9]{5}$/.test(pincode)){ alert('Valid Indian PIN code (6 digits).'); return; }
+
+  const cart = getCart();
+  if(cart.length===0){ alert('Cart is empty'); return; }
+
+  const total = Number(document.getElementById('total').innerText||0);
+  const orderId = 'GG' + Date.now().toString().slice(-6);
+  const itemsText = cart.map(i=>`${i.title} x${i.qty} (₹${i.price*i.qty})`).join('\\n');
+
+  const message = `📦 *New COD Order*\\nOrder ID: ${orderId}\\n\\n*Name:* ${name}\\n*Mobile:* ${phone}\\n*Alt phone:* ${alt || 'N/A'}\\n*Email:* ${email || 'N/A'}\\n*Gaon/City:* ${village}\\n*Post:* ${post}\\n*District:* ${district}\\n*State:* ${state}\\n*PIN:* ${pincode}\\n*Address:* ${address}\\n\\n*Items:*\\n${itemsText}\\n\\n*Total:* ₹${total}`;
+
+  // save order locally
+  const order = {orderId, name, phone, alt, email, village, post, district, state, pincode, address, items:cart, total, date: new Date().toISOString()};
+  const orders = JSON.parse(localStorage.getItem('goGheeOrders')||'[]');
+  orders.push(order);
+  localStorage.setItem('goGheeOrders', JSON.stringify(orders));
+
+  // clear cart
+  localStorage.removeItem('goGheeCart');
+  render();
+
+  // open WhatsApp
+  const url = WA_LINK + '?text=' + encodeURIComponent(message);
+  window.open(url, '_blank');
+
+  document.getElementById('msg').style.display='block';
+  document.getElementById('msg').innerText = 'Order submitted — WhatsApp opened. Order ID: ' + orderId;
+});
+
+render();
+</script>
+</body>
+</html>
