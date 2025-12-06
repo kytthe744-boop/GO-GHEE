@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Go Ghee — Admin Panel</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:0;background:#f4f4f4;padding:14px;}
+  .card{background:#fff;padding:14px;border-radius:12px;box-shadow:0 5px 20px rgba(0,0,0,0.1);margin-bottom:14px;}
+  .top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+  input,button{padding:8px 10px;border-radius:8px;border:1px solid #ddd;font-size:14px;}
+  button{background:#f5c23b;border:none;font-weight:700;cursor:pointer;}
+  table{width:100%;border-collapse:collapse;margin-top:10px;}
+  th,td{padding:8px;border-bottom:1px solid #eee;font-size:13px;text-align:left;}
+  .wa-support{
+    position:fixed;right:14px;bottom:14px;
+    background:#25D366;color:#fff;border-radius:999px;
+    padding:10px 14px;font-weight:700;
+    box-shadow:0 8px 30px rgba(37,211,102,0.3);
+    text-decoration:none;font-size:14px;
+  }
+</style>
+</head>
+<body>
+
+<script>
+// agar login nahi hai to wapas login.html
+if (sessionStorage.getItem("goghee_admin_logged") !== "1") {
+  alert("Pehle login karein.");
+  window.location.href = "login.html";
+}
+</script>
+
+<div class="card">
+  <div class="top">
+    <h2 style="margin:0;">Admin — Orders</h2>
+    <div>
+      <button onclick="logout()" style="background:#ddd;color:#000;">Logout</button>
+    </div>
+  </div>
+  <div class="top" style="margin-top:10px;">
+    <input id="search" placeholder="Search name / phone / order id" style="flex:1;min-width:180px;">
+    <button onclick="searchOrders()">Search</button>
+    <button onclick="renderOrders()" style="background:#ddd;color:#000;">Reset</button>
+  </div>
+  <div id="ordersBox" style="margin-top:10px;"></div>
+</div>
+
+<a class="wa-support" href="https://wa.me/message/YGVHACAEVCTAN1" target="_blank" rel="noopener">
+  WhatsApp Support
+</a>
+
+<script>
+  const ORDERS_KEY = "goGheeOrders";
+
+  function getOrders(){
+    try { return JSON.parse(localStorage.getItem(ORDERS_KEY) || "[]"); }
+    catch(e){ return []; }
+  }
+
+  function renderOrders(list){
+    const box = document.getElementById("ordersBox");
+    const orders = list || getOrders();
+
+    if(!orders.length){
+      box.innerHTML = "<p style='color:#666'>Abhi koi order nahi hai.</p>";
+      return;
+    }
+
+    let html = "<table><tr><th>Order ID</th><th>Name</th><th>Phone</th><th>Total</th><th>Date</th></tr>";
+    orders.slice().reverse().forEach(o=>{
+      const d = o.date ? new Date(o.date).toLocaleString() : "";
+      html += `
+        <tr>
+          <td>${o.orderId || ""}</td>
+          <td>${o.name || ""}</td>
+          <td>${o.phone || ""}</td>
+          <td>₹${o.total || 0}</td>
+          <td>${d}</td>
+        </tr>
+      `;
+    });
+    html += "</table>";
+    box.innerHTML = html;
+  }
+
+  function searchOrders(){
+    const q = (document.getElementById("search").value || "").toLowerCase().trim();
+    const all = getOrders();
+    const filtered = all.filter(o =>
+      (o.orderId || "").toLowerCase().includes(q) ||
+      (o.name || "").toLowerCase().includes(q) ||
+      (o.phone || "").toLowerCase().includes(q)
+    );
+    renderOrders(filtered);
+  }
+
+  function logout(){
+    sessionStorage.removeItem("goghee_admin_logged");
+    window.location.href = "login.html";
+  }
+
+  renderOrders();
+</script>
+</body>
+</html>
