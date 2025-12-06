@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Go Ghee — Admin Panel</title>
+
+<style>
+  body{font-family:Arial;background:#f4f4f4;margin:0;padding:14px}
+  .card{background:#fff;padding:14px;border-radius:12px;box-shadow:0 5px 20px rgba(0,0,0,0.08);margin-bottom:14px}
+  input,button{padding:10px;border-radius:8px;border:1px solid #ddd;font-size:14px}
+  button{background:#f5c23b;border:none;font-weight:700;cursor:pointer}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  table{width:100%;margin-top:10px;border-collapse:collapse}
+  th,td{padding:8px;border-bottom:1px solid #eee;font-size:13px;text-align:left}
+  .prod-img{width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid #ccc}
+</style>
+</head>
+
+<body>
+
+<script>
+// redirect if not logged in
+if(sessionStorage.getItem("goghee_admin") !== "1"){
+  alert("Please login first!");
+  window.location.href = "login.html";
+}
+</script>
+
+<div class="card">
+  <h2>Products Manager</h2>
+
+  <div class="row">
+    <input id="pname" placeholder="Product Name">
+    <input id="pprice" placeholder="Price (₹)" type="number">
+  </div>
+
+  <div class="row">
+    <input id="pimage" type="file" accept="image/*">
+    <button onclick="addProduct()">ADD</button>
+  </div>
+
+  <div id="products"></div>
+</div>
+
+<div class="card">
+  <h2>Customer Orders</h2>
+
+  <div class="row">
+    <input id="search" placeholder="Search order / name / phone">
+    <button onclick="filterOrders()">Search</button>
+  </div>
+
+  <div id="orders"></div>
+</div>
+
+<script>
+const PRODUCT_KEY = "GG_PRODUCTS";
+const ORDER_KEY   = "goGheeOrders";
+
+// load existing
+function getProducts(){ return JSON.parse(localStorage.getItem(PRODUCT_KEY)||"[]"); }
+function saveProducts(x){ localStorage.setItem(PRODUCT_KEY,JSON.stringify(x)); showProducts(); }
+
+function addProduct(){
+  let name = pname.value.trim();
+  let price = pprice.value.trim();
+  let file  = pimage.files[0];
+
+  if(!name || !price || !file){ alert("Fill all fields"); return; }
+
+  let R = new FileReader();
+  R.onload = function(){
+    let dataURL = R.result;
+    let list = getProducts();
+    list.push({id:"P"+Date.now(),name:name,price:price,image:dataURL});
+    saveProducts(list);
+  };
+  R.readAsDataURL(file);
+}
+
+function showProducts(){
+  let list = getProducts();
+  let html = "";
+  list.forEach((p,i)=>{
+    html += `
+      <div class="card">
+        <img class="prod-img" src="${p.image}">
+        <h3>${p.name}</h3>
+        <p>₹${p.price}</p>
+        <button onclick="delProduct(${i})">Delete</button>
+      </div>
+    `;
+  });
+  products.innerHTML = html || "<p>No products added.</p>";
+}
+
+function delProduct(i){
+  if(!confirm("Delete product?")) return;
+  let x = getProducts();
+  x.splice(i,1);
+  saveProducts(x);
+}
+
+// ORDERS
+function getOrders(){ return JSON.parse(localStorage.getItem(ORDER_KEY)||"[]"); }
+
+function showOrders(list=getOrders()){
+  let html = "<table><tr><th>Order</th><th>Name</th><th>Phone</th><th>Total</th><th>Date</th></tr>";
+  list.forEach(o=>{
+    html += `
+      <tr>
+        <td>${o.orderId}</td>
+        <td>${o.name}</td>
+        <td>${o.phone}</td>
+        <td>₹${o.total}</td>
+        <td>${new Date(o.date).toLocaleString()}</td>
+      </tr>`;
+  });
+  html += "</table>";
+  orders.innerHTML = html || "<p>No orders</p>";
+}
+
+function filterOrders(){
+  let q = search.value.toLowerCase();
+  let all = getOrders();
+  let f = all.filter(o=> o.name.toLowerCase().includes(q) || o.phone.includes(q) || o.orderId.toLowerCase().includes(q));
+  showOrders(f);
+}
+
+showProducts();
+showOrders();
+</script>
+
+</body>
+</html>
